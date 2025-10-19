@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "murmurhash3": "^0.5.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && node dist/main.js"
+  }
+}
