@@ -61,8 +61,8 @@ let AW1 = new AddWinsSet((one, two) => one == two, 1);
 let AW2 = new AddWinsSet((one, two) => one == two, 2);
 AW0.add(1);
 AW1.remove(1);
-AW1.add(1);
-AW0.add(2);
+//AW1.add(1);
+//AW0.add(2);
 // Joining AW1 with AW0
 //const joinResult = AW1.store.join(AW1.causalContext, AW0.store, AW0.causalContext);
 //AW1.store = joinResult.store as DotMap<number, DotSet>;

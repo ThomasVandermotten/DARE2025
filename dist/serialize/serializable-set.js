@@ -4,7 +4,7 @@ export class SerializableSet extends Set {
         super(value);
     }
     serialize(length) {
-        const str = this.toJSON(); // Uint8Array
+        const str = JSON.stringify(this); // Uint8Array
         const arr = [];
         for (let i = 0; i < length; i++) {
             arr.push(i < str.length ? str.charCodeAt(i) : 0);
@@ -20,7 +20,7 @@ export class SerializableSet extends Set {
     }
     /** When JSON.stringify() is called, this method is used automatically. */
     toJSON() {
-        return JSON.stringify([...this]);
+        return [...this];
     }
     /** Ensure String(set) returns the same JSON array representation. */
     toString() {

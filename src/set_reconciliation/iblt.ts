@@ -68,6 +68,7 @@ export class InvertibleBloomLookupTable<K extends Serializable, V extends Serial
   keyLen: number;
   valueLen: number;
   hashLen: number;
+  collisionCount: number = 0;
 
   constructor(
     m: number,
@@ -99,9 +100,13 @@ export class InvertibleBloomLookupTable<K extends Serializable, V extends Serial
     const keyArr = key.serialize(this.keyLen);
     const valueArr = value.serialize(this.keyLen);
     const hashArr = this.computeGHash(key);
+    //console.log("for " + key + " " + this.computeHashes(key));
     this.computeHashes(key).forEach((index) => {
       const cell = this.internal[index];
       if (cell !== undefined) {
+        if (cell.count > 0) {
+          this.collisionCount++;
+        }
         cell.count++;
         cell.keySum = sumIntArrays(cell.keySum, keyArr);
         cell.valueSum = sumIntArrays(cell.valueSum, valueArr);
@@ -129,7 +134,7 @@ export class InvertibleBloomLookupTable<K extends Serializable, V extends Serial
   get(key: K): V | undefined {
     const keyArr = key.serialize(this.keyLen);
     const hashArr = this.computeGHash(key);
-
+    //console.log("for " + key + " " + this.computeHashes(key));
     for (let index of this.computeHashes(key)) {
       let cell = this.internal[index];
 
@@ -139,6 +144,7 @@ export class InvertibleBloomLookupTable<K extends Serializable, V extends Serial
           arraysEqual(cell.keySum, Array(this.keyLen).fill(0)) &&
           arraysEqual(cell.hashKeySum, Array(this.hashLen).fill(0))
         ) {
+          //console.log("not found!");
           return undefined;
         }
 
@@ -159,7 +165,7 @@ export class InvertibleBloomLookupTable<K extends Serializable, V extends Serial
         }
       }
     }
-
+    //console.log("not found!");
     return undefined;
   }
 
@@ -303,7 +309,7 @@ export class InvertibleBloomLookupTable<K extends Serializable, V extends Serial
     return output;
   }
 
-  computeHashes(key: K): number[] {
+  computeHashesOld(key: K): number[] {
     const JSONKey = JSON.stringify(key);
     const h1 = murmurhash3.murmur32Sync(JSONKey, 0x1234abcd);
     const h2 = murmurhash3.murmur32Sync(JSONKey, 0xdeadbeef);
@@ -319,6 +325,24 @@ export class InvertibleBloomLookupTable<K extends Serializable, V extends Serial
       const localIndex = (h1 + i * h2) % subTableSize;
 
       indices.push(offset + localIndex);
+    }
+
+    return indices;
+  }
+
+  computeHashes(key: K): number[] {
+    const JSONKey = JSON.stringify(key);
+    const h1 = murmurhash3.murmur32Sync(JSONKey, 0x1234abcd);
+    const h2 = murmurhash3.murmur32Sync(JSONKey, 0xdeadbeef);
+
+    const indices: number[] = [];
+
+    for (let i = 0; i < this.hashCount; i++) {
+      // Double hashing technique
+      const index = (h1 + i * h2) % this.m;
+
+      // Ensure non-negative index (in case of JS modulo quirks)
+      indices.push((index + this.m) % this.m);
     }
 
     return indices;

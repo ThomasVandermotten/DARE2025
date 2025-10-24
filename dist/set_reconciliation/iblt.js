@@ -60,6 +60,7 @@ export class InvertibleBloomLookupTable {
     keyLen;
     valueLen;
     hashLen;
+    collisionCount = 0;
     constructor(m, hashCount, ctorK, ctorV, keyLen = 128, valueLen = 128, hashLen = 128) {
         this.m = m;
         this.hashCount = hashCount;
@@ -79,9 +80,13 @@ export class InvertibleBloomLookupTable {
         const keyArr = key.serialize(this.keyLen);
         const valueArr = value.serialize(this.keyLen);
         const hashArr = this.computeGHash(key);
+        //console.log("for " + key + " " + this.computeHashes(key));
         this.computeHashes(key).forEach((index) => {
             const cell = this.internal[index];
             if (cell !== undefined) {
+                if (cell.count > 0) {
+                    this.collisionCount++;
+                }
                 cell.count++;
                 cell.keySum = sumIntArrays(cell.keySum, keyArr);
                 cell.valueSum = sumIntArrays(cell.valueSum, valueArr);
@@ -106,12 +111,14 @@ export class InvertibleBloomLookupTable {
     get(key) {
         const keyArr = key.serialize(this.keyLen);
         const hashArr = this.computeGHash(key);
+        //console.log("for " + key + " " + this.computeHashes(key));
         for (let index of this.computeHashes(key)) {
             let cell = this.internal[index];
             if (cell !== undefined) {
                 if (cell.count === BigInt(0) &&
                     arraysEqual(cell.keySum, Array(this.keyLen).fill(0)) &&
                     arraysEqual(cell.hashKeySum, Array(this.hashLen).fill(0))) {
+                    //console.log("not found!");
                     return undefined;
                 }
                 if (cell.count === BigInt(1) &&
@@ -126,6 +133,7 @@ export class InvertibleBloomLookupTable {
                 }
             }
         }
+        //console.log("not found!");
         return undefined;
     }
     listEntries() {
@@ -206,7 +214,7 @@ export class InvertibleBloomLookupTable {
         output.internal = structuredClone(this.internal);
         return output;
     }
-    computeHashes(key) {
+    computeHashesOld(key) {
         const JSONKey = JSON.stringify(key);
         const h1 = murmurhash3.murmur32Sync(JSONKey, 0x1234abcd);
         const h2 = murmurhash3.murmur32Sync(JSONKey, 0xdeadbeef);
@@ -218,6 +226,19 @@ export class InvertibleBloomLookupTable {
             // compute index inside the subtable
             const localIndex = (h1 + i * h2) % subTableSize;
             indices.push(offset + localIndex);
+        }
+        return indices;
+    }
+    computeHashes(key) {
+        const JSONKey = JSON.stringify(key);
+        const h1 = murmurhash3.murmur32Sync(JSONKey, 0x1234abcd);
+        const h2 = murmurhash3.murmur32Sync(JSONKey, 0xdeadbeef);
+        const indices = [];
+        for (let i = 0; i < this.hashCount; i++) {
+            // Double hashing technique
+            const index = (h1 + i * h2) % this.m;
+            // Ensure non-negative index (in case of JS modulo quirks)
+            indices.push((index + this.m) % this.m);
         }
         return indices;
     }

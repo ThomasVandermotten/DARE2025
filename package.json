@@ -8,6 +8,9 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && node dist/main.js"
+    "start": "npm run build && node dist/main.js",
+    "gset": "npm run build && node dist/examples/example-gset.js",
+    "awset": "npm run build && node dist/examples/example-awset.js",
+    "iblt": "npm run build && node dist/examples/example-iblt.js"
   }
 }
